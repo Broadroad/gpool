@@ -18,8 +18,8 @@ type Pool interface {
 	Close()
 
 	// Len get the length of the pool
-	Len()
+	Len() int
 
 	// Idle get the idle connection pool number
-	Idle()
+	Idle() int
 }
