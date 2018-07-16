@@ -40,7 +40,7 @@ func NewConnPool(initCap, maxCap int, factory Factory) (Pool, error) {
 		p.conns <- conn
 	}
 
-	return c, nil
+	return p, nil
 }
 
 // wrapConn wraps a standard net.Conn to a poolConn net.Conn.

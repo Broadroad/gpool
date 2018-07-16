@@ -8,7 +8,7 @@ import (
 // GConn wrap net.Conn to borrow or return conn
 type GConn struct {
 	net.Conn
-	c        *connPool
+	p        *connPool
 	mu       sync.RWMutex
 	unusable bool
 }
@@ -24,7 +24,7 @@ func (g *GConn) Close() error {
 		}
 		return nil
 	}
-	return g.c.Return(g.Conn)
+	return g.p.Return(g.Conn)
 }
 
 // MarkUnusable marks the connection not usable any more, to let the pool close it instead of returning it to pool.
