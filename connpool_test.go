@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestPool_Get_Impl(t *testing.T) {
+func TestGet(t *testing.T) {
 	p, _ := NewConnPool(1, 3, factory)
 	defer p.Close()
 
@@ -35,8 +35,38 @@ func TestPool_Get_Impl(t *testing.T) {
 
 	_, ok := conn.(*GConn)
 	if !ok {
-		t.Errorf("Conn is not of type poolConn")
+		t.Errorf("Conn is not of type GConn")
 	}
+}
+
+func TestPressGet(t *testing.T) {
+	p, _ := NewConnPool(3, 10, factory)
+	defer p.Close()
+	done := make(chan struct{})
+
+	for i := 0; i < 2000; i++ {
+		go func() {
+			defer func() {
+				done <- struct{}{}
+			}()
+			conn, err := p.Get()
+			if err != nil {
+				t.Errorf("Get error: %s", err)
+			}
+
+			_, ok := conn.(*GConn)
+			if !ok {
+				t.Errorf("Conn is not of type GConn")
+			} else {
+				conn.Close()
+			}
+		}()
+	}
+
+	for i := 0; i < 2000; i++ {
+		<-done
+	}
+	time.Sleep(time.Second * 20)
 }
 
 func simpleTCPServer() {
