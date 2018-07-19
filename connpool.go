@@ -6,34 +6,50 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
-//connPool store connections and pool info
-type connPool struct {
-	conns   chan net.Conn
-	factory Factory
-	mu      sync.RWMutex
-	idle    int64
+// PoolConfig used for config the connection pool
+type PoolConfig struct {
+	// InitCap of the connection pool
+	InitCap int
+	// Maxcap is max connection number of the pool
+	MaxCap int
+	// WaitTimeout is the timeout for waiting to borrow a connection
+	WaitTimeout time.Duration
+	// IdleTimeout is the timeout for a connection to be alive
+	IdleTimeout time.Duration
+	Factory     func() (net.Conn, error)
+}
+
+//gPool store connections and pool info
+type gPool struct {
+	conns         chan net.Conn
+	factory       Factory
+	mu            sync.RWMutex
+	poolConfig    *PoolConfig
+	idleConns     int
+	borrowedConns int
 }
 
 // Factory generate a new connection
 type Factory func() (net.Conn, error)
 
-// NewConnPool create a connection pool
-func NewConnPool(initCap, maxCap int, factory Factory) (Pool, error) {
+// NewGPool create a connection pool
+func NewGPool(pc *PoolConfig) (Pool, error) {
 	// test initCap and maxCap
-	if initCap < 0 || maxCap < 0 || initCap > maxCap {
+	if pc.InitCap < 0 || pc.MaxCap < 0 || pc.InitCap > pc.MaxCap {
 		return nil, errors.New("invalid capacity setting")
 	}
-	p := &connPool{
-		conns:   make(chan net.Conn, maxCap),
-		factory: factory,
-		idle:    int64(initCap),
+	p := &gPool{
+		conns:      make(chan net.Conn, pc.MaxCap),
+		factory:    pc.Factory,
+		poolConfig: pc,
 	}
 
 	// create initial connection, if wrong just close it
-	for i := 0; i < initCap; i++ {
-		conn, err := factory()
+	for i := 0; i < pc.InitCap; i++ {
+		conn, err := pc.Factory()
 		if err != nil {
 			p.Close()
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
@@ -45,14 +61,14 @@ func NewConnPool(initCap, maxCap int, factory Factory) (Pool, error) {
 }
 
 // wrapConn wraps a standard net.Conn to a poolConn net.Conn.
-func (p *connPool) wrapConn(conn net.Conn) net.Conn {
+func (p *gPool) wrapConn(conn net.Conn) net.Conn {
 	gconn := &GConn{p: p}
 	gconn.Conn = conn
 	return gconn
 }
 
 // getConnsAndFactory get conn channel and factory by once
-func (p *connPool) getConnsAndFactory() (chan net.Conn, Factory) {
+func (p *gPool) getConnsAndFactory() (chan net.Conn, Factory) {
 	p.mu.RLock()
 	conns := p.conns
 	factory := p.factory
@@ -62,13 +78,13 @@ func (p *connPool) getConnsAndFactory() (chan net.Conn, Factory) {
 
 // Return return the connection back to the pool. If the pool is full or closed,
 // conn is simply closed. A nil conn will be rejected.
-func (p *connPool) Return(conn net.Conn) error {
+func (p *gPool) Return(conn net.Conn) error {
 	if conn == nil {
 		return errors.New("connection is nil. rejecting")
 	}
 
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	if p.conns == nil {
 		// pool is closed, close passed connection
@@ -79,20 +95,21 @@ func (p *connPool) Return(conn net.Conn) error {
 	// block and the default case will be executed.
 	select {
 	case p.conns <- conn:
-		atomic.AddInt64(&p.idle, -1)
+		p.idleConns++
 		return nil
 	default:
 		// pool is full, close passed connection
+		p.borrowedConns--
 		return conn.Close()
 	}
 }
 
 // Get implement Pool get interface
 // if don't have any connection avaliable, it will try to new one
-func (p *connPool) Get() (net.Conn, error) {
+func (p *gPool) Get() (net.Conn, error) {
 	conns, factory := p.getConnsAndFactory()
 	if conns == nil {
-		return nil, ErrClosed
+		return nil, ErrNil
 	}
 
 	// wrap our connections with out custom net.Conn implementation (wrapConn
@@ -103,10 +120,13 @@ func (p *connPool) Get() (net.Conn, error) {
 			return nil, ErrClosed
 		}
 
-		atomic.AddInt64(&p.idle, 1)
+		p.idleConns--
 		return p.wrapConn(conn), nil
 	default:
 		conn, err := factory()
+		p.mu.Lock()
+		p.borrowedConns++
+		defer p.mu.Unlock()
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +137,7 @@ func (p *connPool) Get() (net.Conn, error) {
 
 // Close implement Pool close interface
 // it will close all the connection in the pool
-func (p *connPool) Close() {
+func (p *gPool) Close() {
 	p.mu.Lock()
 	conns := p.conns
 	p.conns = nil
@@ -136,13 +156,13 @@ func (p *connPool) Close() {
 
 // Len implement Pool Len interface
 // it will return current length of the pool
-func (p *connPool) Len() int {
+func (p *gPool) Len() int {
 	conns, _ := p.getConnsAndFactory()
 	return len(conns)
 }
 
 // Idle implement Pool Idle interface
 // it will return current idle length of the pool
-func (p *connPool) Idle() int {
-	return int(p.idle)
+func (p *gPool) Idle() int {
+	return int(p.idleConns)
 }

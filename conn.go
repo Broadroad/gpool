@@ -8,7 +8,7 @@ import (
 // GConn wrap net.Conn to borrow or return conn
 type GConn struct {
 	net.Conn
-	p        *connPool
+	p        *gPool
 	mu       sync.RWMutex
 	unusable bool
 }

@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrClosed = errors.New("pool has been closed")
+	ErrNil    = errors.New("pool is nil")
 )
 
 type Pool interface {
