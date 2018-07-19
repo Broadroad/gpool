@@ -5,15 +5,13 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"github.com/gpool"
 )
 
 var (
 	network    = "tcp"
 	address    = "127.0.0.1:8080"
 	factory    = func() (net.Conn, error) { return net.Dial(network, address) }
-	poolConfig = &gpool.PoolConfig{
+	poolConfig = &PoolConfig{
 		InitCap:     5,
 		MaxCap:      30,
 		Factory:     factory,
@@ -26,14 +24,14 @@ func init() {
 	time.Sleep(time.Millisecond * 300) // wait until tcp server has been settled
 }
 func TestNew(t *testing.T) {
-	_, err := NewConnPool(poolConfig)
+	_, err := NewGPool(poolConfig)
 	if err != nil {
 		t.Errorf("New error: %s", err)
 	}
 }
 
 func TestGet(t *testing.T) {
-	p, _ := NewConnPool(poolConfig)
+	p, _ := NewGPool(poolConfig)
 	defer p.Close()
 
 	conn, err := p.Get()
@@ -48,7 +46,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestPressGet(t *testing.T) {
-	p, _ := NewConnPool(poolConfig)
+	p, _ := NewGPool(poolConfig)
 	defer p.Close()
 	done := make(chan struct{})
 

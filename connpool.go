@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -45,6 +44,7 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 		conns:      make(chan net.Conn, pc.MaxCap),
 		factory:    pc.Factory,
 		poolConfig: pc,
+		idleConns:  pc.InitCap,
 	}
 
 	// create initial connection, if wrong just close it
@@ -123,8 +123,12 @@ func (p *gPool) Get() (net.Conn, error) {
 		p.idleConns--
 		return p.wrapConn(conn), nil
 	default:
+
 		conn, err := factory()
 		p.mu.Lock()
+		if p.borrowedConns > p.poolConfig.MaxCap {
+			return nil, err
+		}
 		p.borrowedConns++
 		defer p.mu.Unlock()
 		if err != nil {
