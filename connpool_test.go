@@ -23,12 +23,14 @@ func init() {
 	go simpleTCPServer()
 	time.Sleep(time.Millisecond * 300) // wait until tcp server has been settled
 }
+
 func TestNew(t *testing.T) {
 	_, err := NewGPool(poolConfig)
 	if err != nil {
 		t.Errorf("New error: %s", err)
 	}
 }
+
 
 func TestGet(t *testing.T) {
 	p, _ := NewGPool(poolConfig)
@@ -64,6 +66,7 @@ func TestPressGet(t *testing.T) {
 			if !ok {
 				t.Errorf("Conn is not of type GConn")
 			} else {
+				time.Sleep(10)
 				conn.Close()
 			}
 		}()

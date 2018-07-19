@@ -23,12 +23,12 @@ type PoolConfig struct {
 
 //gPool store connections and pool info
 type gPool struct {
-	conns         chan net.Conn
-	factory       Factory
-	mu            sync.RWMutex
-	poolConfig    *PoolConfig
-	idleConns     int
-	borrowedConns int
+	conns      chan net.Conn
+	factory    Factory
+	mu         sync.RWMutex
+	poolConfig *PoolConfig
+	idleConns  int
+	createNum  int
 }
 
 // Factory generate a new connection
@@ -54,6 +54,7 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 			p.Close()
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
 		}
+		p.createNum = pc.InitCap
 		p.conns <- conn
 	}
 
@@ -99,7 +100,6 @@ func (p *gPool) Return(conn net.Conn) error {
 		return nil
 	default:
 		// pool is full, close passed connection
-		p.borrowedConns--
 		return conn.Close()
 	}
 }
@@ -123,14 +123,16 @@ func (p *gPool) Get() (net.Conn, error) {
 		p.idleConns--
 		return p.wrapConn(conn), nil
 	default:
-
-		conn, err := factory()
 		p.mu.Lock()
-		if p.borrowedConns > p.poolConfig.MaxCap {
-			return nil, err
-		}
-		p.borrowedConns++
 		defer p.mu.Unlock()
+		p.createNum++
+		if p.createNum > p.poolConfig.MaxCap {
+			return nil, errors.New("More than MaxCap")
+		}
+		conn, err := factory()
+
+		fmt.Println(p.createNum)
+
 		if err != nil {
 			return nil, err
 		}
