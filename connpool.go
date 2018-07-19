@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 )
 
+//connPool store connections and pool info
 type connPool struct {
 	conns   chan net.Conn
 	factory Factory

@@ -66,7 +66,6 @@ func TestPressGet(t *testing.T) {
 	for i := 0; i < 2000; i++ {
 		<-done
 	}
-	time.Sleep(time.Second * 20)
 }
 
 func simpleTCPServer() {
