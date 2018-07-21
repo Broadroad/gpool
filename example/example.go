@@ -33,7 +33,7 @@ func main() {
 		fmt.Println("Get error: %s", err)
 	}
 
-	_, ok := conn.(*GConn)
+	_, ok := conn.(*gpool.GConn)
 	if !ok {
 		fmt.Println("Conn is not of type GConn")
 	}
