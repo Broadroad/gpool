@@ -15,7 +15,7 @@ A go tcp connection pool
 install with this command:
 ```shell
 go get github.com/broadroad/gpool
-```shell
+```
 
 and then use like this bellow:
 
