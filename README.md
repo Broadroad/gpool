@@ -12,6 +12,13 @@ A go tcp connection pool
 - connection will be closed when idle for some time duration
 
 ## Usage
+install with this command:
+```shell
+go get github.com/broadroad/gpool
+```shell
+
+and then use like this bellow:
+
 ```go
 // create factory to create connection
 factory    = func() (net.Conn, error) { return net.Dial(network, address) }
