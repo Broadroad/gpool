@@ -31,7 +31,6 @@ func TestNew(t *testing.T) {
 	}
 }
 
-
 func TestGet(t *testing.T) {
 	p, _ := NewGPool(poolConfig)
 	defer p.Close()
@@ -52,7 +51,7 @@ func TestPressGet(t *testing.T) {
 	defer p.Close()
 	done := make(chan struct{})
 
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 20; i++ {
 		go func() {
 			defer func() {
 				done <- struct{}{}
@@ -72,7 +71,7 @@ func TestPressGet(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 20; i++ {
 		<-done
 	}
 }
