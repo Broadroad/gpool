@@ -12,7 +12,7 @@ func main() {
 	factory := func() (net.Conn, error) { return net.Dial("tcp", "127.0.0.1") }
 
 	// poolConfig is the config of gpool
-	poolConfig := &PoolConfig{
+	poolConfig := &gpool.PoolConfig{
 		InitCap: 5,
 		MaxCap:  30,
 		Factory: factory,
@@ -30,12 +30,12 @@ func main() {
 	// get a new connection from pool
 	conn, err := p.Get()
 	if err != nil {
-		t.Errorf("Get error: %s", err)
+		fmt.Println("Get error: %s", err)
 	}
 
 	_, ok := conn.(*GConn)
 	if !ok {
-		t.Errorf("Conn is not of type GConn")
+		fmt.Println("Conn is not of type GConn")
 	}
 
 	// return connection to pool
