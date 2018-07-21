@@ -1,4 +1,5 @@
 # gpool
+[![GoDoc](http://godoc.org/github.com/silenceper/pool?status.svg)](http://godoc.org/github.com/silenceper/pool)
 A go tcp connection pool
 
 ## Function
