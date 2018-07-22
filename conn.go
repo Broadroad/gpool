@@ -3,6 +3,7 @@ package gpool
 import (
 	"net"
 	"sync"
+	"time"
 )
 
 // GConn wrap net.Conn to borrow or return conn
@@ -15,6 +16,8 @@ type GConn struct {
 	mu sync.RWMutex
 	// identify an GConn usable or can close
 	unusable bool
+	// create time
+	t time.Time()
 }
 
 // Close puts the given connects back to the pool instead of closing it.

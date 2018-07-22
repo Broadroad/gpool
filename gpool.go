@@ -23,7 +23,7 @@ type PoolConfig struct {
 
 //gPool store connections and pool info
 type gPool struct {
-	conns      chan net.Conn
+	conns      chan gPool.GConn
 	factory    Factory
 	mu         sync.RWMutex
 	poolConfig *PoolConfig
@@ -55,7 +55,7 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
 		}
 		p.createNum = pc.InitCap
-		p.conns <- conn
+		p.conns <- &GConn{conn: conn, t: time.Now()}
 	}
 
 	return p, nil
@@ -114,31 +114,34 @@ func (p *gPool) Get() (net.Conn, error) {
 
 	// wrap our connections with out custom net.Conn implementation (wrapConn
 	// method) that puts the connection back to the pool if it's closed.
-	select {
-	case conn := <-conns:
-		if conn == nil {
-			return nil, ErrClosed
+	for {
+		select {
+		case conn := <-conns:
+			if conn == nil {
+				return nil, ErrClosed
+			}
+
+			p.idleConns--
+			return p.wrapConn(conn), nil
+		default:
+			p.mu.Lock()
+			defer p.mu.Unlock()
+			p.createNum++
+			if p.createNum > p.poolConfig.MaxCap {
+				return nil, errors.New("More than MaxCap")
+			}
+			conn, err := factory()
+
+			fmt.Println(p.createNum)
+
+			if err != nil {
+				return nil, err
+			}
+
+			return p.wrapConn(conn), nil
 		}
-
-		p.idleConns--
-		return p.wrapConn(conn), nil
-	default:
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		p.createNum++
-		if p.createNum > p.poolConfig.MaxCap {
-			return nil, errors.New("More than MaxCap")
-		}
-		conn, err := factory()
-
-		fmt.Println(p.createNum)
-
-		if err != nil {
-			return nil, err
-		}
-
-		return p.wrapConn(conn), nil
 	}
+
 }
 
 // Close implement Pool close interface
