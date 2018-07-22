@@ -24,6 +24,7 @@ func (g *GConn) Close() error {
 
 	if g.unusable {
 		if g.Conn != nil {
+			g.p.addRemainingSpace()
 			return g.Conn.Close()
 		}
 		return nil

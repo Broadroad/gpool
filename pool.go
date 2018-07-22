@@ -23,4 +23,6 @@ type Pool interface {
 
 	// Idle get the idle connection pool number
 	Idle() int
+
+	BlockingGet() (net.Conn, error)
 }
