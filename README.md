@@ -7,7 +7,7 @@ A go tcp connection pool
 - reuse connection in gpool
 - get connection from gpool will error when pool is full
 
-## TODO
+## Todo
 - get connection will block until timeout or a idle connection return
 - connection will be closed when idle for some time duration
 
