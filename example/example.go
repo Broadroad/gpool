@@ -30,7 +30,7 @@ func main() {
 	// get a new connection from pool
 	conn, err := p.Get()
 	if err != nil {
-		fmt.Println("Get error: %s", err)
+		fmt.Println("Get error:", err)
 	}
 
 	_, ok := conn.(*gpool.GConn)
