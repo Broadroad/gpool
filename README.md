@@ -13,12 +13,12 @@ A go tcp connection pool
 - Connection will be closed when idle for some time duration(keep idle connection alive for some time that users can config)
 
 ## Usage
-### install with this command:
+### 1. install with this command:
 ```shell
 go get github.com/broadroad/gpool
 ```
 
-### and then set the poolConfig:
+### 2. set the poolConfig:
 
 ```go
 // create factory to create connection
@@ -32,7 +32,7 @@ poolConfig = &PoolConfig{
 }
 ```
 
-### Non blocking get, if no idle connection then return error.
+### 3. create new gpool
 ```go
 // create a new gpool
 p, err := NewGPool(poolConfig)
@@ -40,8 +40,11 @@ if err != nil {
     fmt.Println(err)
 }
 // release all connection in gpool
-p.Close()
+defer p.Close()
+```
 
+### 4. non blocking get, if no idle connection then return error.
+```go
 // get a connection from gpool, if gpool has no idle connection, it will return error
 conn, err := p.Get()
 if err != nil {
@@ -52,7 +55,7 @@ if err != nil {
 defer conn.Close()
 ```
 
-### Blocking get, if no idle connection then block until a time out
+### 5. Blocking get, if no idle connection then block until a time out
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) //3second timeout
@@ -61,6 +64,8 @@ conn, err := p.BlockingGet(ctx)
 if err != nil {
 	fmt.Println("Get error:", err)
 }
+
+// return a connection to gpool
 defer conn.Close()
 ```
 
