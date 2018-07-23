@@ -1,4 +1,4 @@
-# gpool[![GoDoc](http://godoc.org/github.com/silenceper/pool?status.svg)](http://godoc.org/github.com/silenceper/pool) [![Build Status](https://travis-ci.org/Broadroad/gpool.svg?branch=master)](https://travis-ci.org/Broadroad/gpool)
+# gpool[![GoDoc](https://godoc.org/github.com/Broadroad/gpool?status.svg)](https://godoc.org/github.com/Broadroad/gpool) [![Build Status](https://travis-ci.org/Broadroad/gpool.svg?branch=master)](https://travis-ci.org/Broadroad/gpool)
 
 A go tcp connection pool
 
