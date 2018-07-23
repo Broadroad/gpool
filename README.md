@@ -8,8 +8,8 @@ A go tcp connection pool
 - get connection from gpool will error when pool is full
 
 ## Todo
-- get connection will block until timeout or a idle connection return
-- connection will be closed when idle for some time duration
+- Add a timeout in BlockingGet
+- Connection will be closed when idle for some time duration
 
 ## Usage
 install with this command:
@@ -28,7 +28,6 @@ poolConfig = &PoolConfig{
 	InitCap:     5,
 	MaxCap:      30,
 	Factory:     factory,
-	IdleTimeout: 15 * time.Second,
 }
 
 // create a new gpool
@@ -37,10 +36,19 @@ if err != nil {
     fmt.Println(err)
 }
 
-// get a connection from gpool
+// get a connection from gpool, if gpool has no idle connection, it will return error
 conn, err := p.Get()
 if err != nil {
-	t.Errorf("Get error: %s", err)
+	fmt.Println("Get error: ", err)
+}
+
+// return a connection to gpool
+conn.Close()
+
+// BlockingGet will block until it has a idle connection
+conn, err := p.BlockingGet()
+if err != nil {
+	fmt.Println("Get error: ", err)
 }
 
 // return a connection to gpool

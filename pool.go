@@ -11,6 +11,7 @@ var (
 	ErrNil    = errors.New("pool is nil")
 )
 
+// Pool is interface which all type of pool need to implement
 type Pool interface {
 	// Get returns a new connection from pool.
 	Get() (net.Conn, error)
@@ -24,5 +25,6 @@ type Pool interface {
 	// Idle get the idle connection pool number
 	Idle() int
 
+	// BlockingGet will block until it get a idle connection from pool
 	BlockingGet() (net.Conn, error)
 }

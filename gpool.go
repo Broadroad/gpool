@@ -137,7 +137,9 @@ func (p *gPool) Get() (net.Conn, error) {
 			return nil, ErrClosed
 		}
 
+		p.mu.Lock()
 		p.idleConns--
+		p.mu.Unlock()
 		return p.wrapConn(conn), nil
 	default:
 		p.mu.Lock()
@@ -148,8 +150,6 @@ func (p *gPool) Get() (net.Conn, error) {
 		}
 		conn, err := factory()
 		p.removeRemainingSpace()
-
-		fmt.Println(p.createNum)
 
 		if err != nil {
 			p.addRemainingSpace()
@@ -174,7 +174,9 @@ func (p *gPool) BlockingGet() (net.Conn, error) {
 			return nil, ErrClosed
 		}
 
+		p.mu.Lock()
 		p.idleConns--
+		p.mu.Unlock()
 		return p.wrapConn(conn), nil
 	case _ = <-p.remainingSpace:
 		p.mu.Lock()
@@ -185,7 +187,6 @@ func (p *gPool) BlockingGet() (net.Conn, error) {
 		//}
 		conn, err := factory()
 		p.removeRemainingSpace()
-		fmt.Println(p.createNum)
 
 		if err != nil {
 			p.addRemainingSpace()
@@ -226,5 +227,8 @@ func (p *gPool) Len() int {
 // Idle implement Pool Idle interface
 // it will return current idle length of the pool
 func (p *gPool) Idle() int {
-	return int(p.idleConns)
+	p.mu.Lock()
+	idle := p.idleConns
+	p.mu.Unlock()
+	return int(idle)
 }
