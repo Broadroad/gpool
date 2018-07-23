@@ -5,11 +5,12 @@ A go tcp connection pool
 ## Function
 - gpool support net.Conn interface
 - reuse connection in gpool
-- get connection from gpool will error when pool is full
+- get connection from gpool will error when there is no idle connection in gpool
+- support block get from gpool when there is no idle connection in gpool
 
 ## Todo
 - Add a timeout in BlockingGet
-- Connection will be closed when idle for some time duration
+- Connection will be closed when idle for some time duration(keep idle connection alive for some time that users can config)
 
 ## Usage
 install with this command:
