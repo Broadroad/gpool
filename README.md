@@ -55,7 +55,7 @@ if err != nil {
 defer conn.Close()
 ```
 
-### 5. Blocking get, if no idle connection then block until a time out
+### 5. blocking get, if no idle connection then block until a time out
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) //3second timeout
