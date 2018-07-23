@@ -65,13 +65,44 @@ func TestPressGet(t *testing.T) {
 			if !ok {
 				t.Errorf("Conn is not of type GConn")
 			} else {
-				time.Sleep(10)
+				time.Sleep(time.Second * 1)
 				conn.Close()
 			}
 		}()
 	}
 
 	for i := 0; i < 20; i++ {
+		<-done
+	}
+}
+
+func TestBlockingGet(t *testing.T) {
+	p, _ := NewGPool(poolConfig)
+	defer p.Close()
+	done := make(chan struct{})
+
+	for i := 0; i < 30; i++ {
+		go func(i int) {
+			defer func() {
+				done <- struct{}{}
+			}()
+
+			conn, err := p.BlockingGet()
+			if err != nil {
+				t.Errorf("Get error: %s", err)
+			}
+
+			_, ok := conn.(*GConn)
+			if !ok {
+				t.Errorf("Conn is not of type GConn")
+			} else {
+				time.Sleep(time.Second * 1)
+				conn.Close()
+			}
+		}(i)
+	}
+
+	for i := 0; i < 30; i++ {
 		<-done
 	}
 }

@@ -186,7 +186,8 @@ func (p *gPool) BlockingGet() (net.Conn, error) {
 		//	return nil, errors.New("More than MaxCap")
 		//}
 		conn, err := factory()
-		p.removeRemainingSpace()
+		//because when enter here, already consume p.remainingSpace
+		//p.removeRemainingSpace()
 
 		if err != nil {
 			p.addRemainingSpace()
