@@ -2,6 +2,7 @@
 package gpool
 
 import (
+	"context"
 	"errors"
 	"net"
 )
@@ -25,6 +26,8 @@ type Pool interface {
 	// Idle get the idle connection pool number
 	Idle() int
 
-	// BlockingGet will block until it get a idle connection from pool
-	BlockingGet() (net.Conn, error)
+	// BlockingGet will block until it gets an idle connection from pool. Context timeout can be passed with context
+	// to wait for specific amount of time. If nil is passed, this will wait indefinitely until a connection is
+	// available.
+	BlockingGet(context.Context) (net.Conn, error)
 }
