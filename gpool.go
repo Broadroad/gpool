@@ -1,6 +1,7 @@
 package gpool
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -160,12 +161,18 @@ func (p *gPool) Get() (net.Conn, error) {
 	}
 }
 
-func (p *gPool) BlockingGet() (net.Conn, error) {
+// BlockingGet will block until it gets an idle connection from pool. Context timeout can be passed with context
+// to wait for specific amount of time. If nil is passed, this will wait indefinitely until a connection is
+// available.
+func (p *gPool) BlockingGet(ctx context.Context) (net.Conn, error) {
 	conns, factory := p.getConnsAndFactory()
 	if conns == nil {
 		return nil, ErrNil
 	}
-
+	//if context is nil it means we have no timeout, we can wait indefinitely
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	// wrap our connections with out custom net.Conn implementation (wrapConn
 	// method) that puts the connection back to the pool if it's closed.
 	select {
@@ -195,6 +202,9 @@ func (p *gPool) BlockingGet() (net.Conn, error) {
 		}
 
 		return p.wrapConn(conn), nil
+	//if context deadline is reached, return timeout error
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 

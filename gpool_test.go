@@ -1,6 +1,7 @@
 package gpool
 
 import (
+	"context"
 	"log"
 	"net"
 	"testing"
@@ -81,13 +82,18 @@ func TestBlockingGet(t *testing.T) {
 	defer p.Close()
 	done := make(chan struct{})
 
+	//todo: test nil ctx, ctx with and without timeout
+	//context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
 	for i := 0; i < 30; i++ {
 		go func(i int) {
 			defer func() {
 				done <- struct{}{}
 			}()
 
-			conn, err := p.BlockingGet()
+			conn, err := p.BlockingGet(ctx)
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
