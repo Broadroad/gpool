@@ -1,4 +1,4 @@
-# gpool[![GoDoc](http://godoc.org/github.com/silenceper/pool?status.svg)](http://godoc.org/github.com/silenceper/pool) [![Build Status](https://travis-ci.org/Broadroad/gpool.svg?branch=master)](https://travis-ci.org/Broadroad/gpool)
+# gpool[![GoDoc](http://godoc.org/github.com/silenceper/pool?status.svg)](http://godoc.org/github.com/silenceper/pool) [![Build Status](http://img.shields.io/travis/fatih/pool.svg?style=flat-square)](https://travis-ci.org/Broadroad/gpool)
 
 A go tcp connection pool
 
@@ -61,7 +61,7 @@ p.Close()
 ```
 
 ## License
-The Apache License 2.0 - see LICENCE for more details
+The Apache License 2.0 - see LISENCE for more details
 
 ## Issue
 It will be very pleasure if you give some issue or pr. Feel free to contact tjbroadroad@163.com
