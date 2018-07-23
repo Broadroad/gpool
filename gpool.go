@@ -29,10 +29,20 @@ type gPool struct {
 	poolConfig *PoolConfig
 	idleConns  int
 	createNum  int
+	//will be used for blocking calls
+	remainingSpace chan bool
 }
 
 // Factory generate a new connection
 type Factory func() (net.Conn, error)
+
+func (p *gPool) addRemainingSpace() {
+	p.remainingSpace <- true
+}
+
+func (p *gPool) removeRemainingSpace() {
+	<-p.remainingSpace
+}
 
 // NewGPool create a connection pool
 func NewGPool(pc *PoolConfig) (Pool, error) {
@@ -41,23 +51,30 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 		return nil, errors.New("invalid capacity setting")
 	}
 	p := &gPool{
-		conns:      make(chan net.Conn, pc.MaxCap),
-		factory:    pc.Factory,
-		poolConfig: pc,
-		idleConns:  pc.InitCap,
+		conns:          make(chan net.Conn, pc.MaxCap),
+		factory:        pc.Factory,
+		poolConfig:     pc,
+		idleConns:      pc.InitCap,
+		remainingSpace: make(chan bool, pc.MaxCap),
+	}
+
+	//fill the remainingSpace channel so we can use it for blocking calls
+	for i := 0; i < pc.MaxCap; i++ {
+		p.addRemainingSpace()
 	}
 
 	// create initial connection, if wrong just close it
 	for i := 0; i < pc.InitCap; i++ {
 		conn, err := pc.Factory()
+		p.removeRemainingSpace()
 		if err != nil {
 			p.Close()
+			p.addRemainingSpace()
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
 		}
 		p.createNum = pc.InitCap
 		p.conns <- conn
 	}
-
 	return p, nil
 }
 
@@ -130,10 +147,48 @@ func (p *gPool) Get() (net.Conn, error) {
 			return nil, errors.New("More than MaxCap")
 		}
 		conn, err := factory()
+		p.removeRemainingSpace()
 
 		fmt.Println(p.createNum)
 
 		if err != nil {
+			p.addRemainingSpace()
+			return nil, err
+		}
+
+		return p.wrapConn(conn), nil
+	}
+}
+
+func (p *gPool) BlockingGet() (net.Conn, error) {
+	conns, factory := p.getConnsAndFactory()
+	if conns == nil {
+		return nil, ErrNil
+	}
+
+	// wrap our connections with out custom net.Conn implementation (wrapConn
+	// method) that puts the connection back to the pool if it's closed.
+	select {
+	case conn := <-conns:
+		if conn == nil {
+			return nil, ErrClosed
+		}
+
+		p.idleConns--
+		return p.wrapConn(conn), nil
+	case _ = <-p.remainingSpace:
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		p.createNum++
+		//if p.createNum > p.poolConfig.MaxCap {
+		//	return nil, errors.New("More than MaxCap")
+		//}
+		conn, err := factory()
+		p.removeRemainingSpace()
+		fmt.Println(p.createNum)
+
+		if err != nil {
+			p.addRemainingSpace()
 			return nil, err
 		}
 
@@ -157,6 +212,7 @@ func (p *gPool) Close() {
 	close(conns)
 	for conn := range conns {
 		conn.Close()
+		p.addRemainingSpace()
 	}
 }
 
