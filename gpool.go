@@ -182,7 +182,12 @@ func (p *gPool) BlockingGet() (net.Conn, error) {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		p.createNum++
+		//if p.createNum > p.poolConfig.MaxCap {
+		//	return nil, errors.New("More than MaxCap")
+		//}
 		conn, err := factory()
+		p.removeRemainingSpace()
+
 		if err != nil {
 			p.addRemainingSpace()
 			return nil, err
