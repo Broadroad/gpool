@@ -8,8 +8,10 @@ import (
 )
 
 var (
+	// ErrClosed is error which pool has been closed but still been used
 	ErrClosed = errors.New("pool has been closed")
-	ErrNil    = errors.New("pool is nil")
+	// ErrNil is error which pool is nil but has been used
+	ErrNil = errors.New("pool is nil")
 )
 
 // Pool is interface which all type of pool need to implement
