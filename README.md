@@ -55,12 +55,22 @@ if err != nil {
 defer conn.Close()
 ```
 
-### 5. blocking get, if no idle connection then block until a time out
-
+### 5. blocking get, if no idle connection then block until a timeout
+#### 5.1 Block until specified timeout
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) //3second timeout
 defer cancel()
 conn, err := p.BlockingGet(ctx)
+if err != nil {
+	fmt.Println("Get error:", err)
+}
+
+// return a connection to gpool
+defer conn.Close()
+```
+#### 5.2 Block indefinitely
+```go
+conn, err := p.BlockingGet(nil)
 if err != nil {
 	fmt.Println("Get error:", err)
 }
