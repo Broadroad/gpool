@@ -6,7 +6,7 @@ A go tcp connection pool
 - gpool support net.Conn interface
 - reuse connection in gpool
 - get connection from gpool will error when there is no idle connection in gpool
-- support block get from gpool when there is no idle connection in gpool
+- support block get from gpool when there is no idle connection in gpool with timeout
 
 ## Todo
 - Connection will be closed when idle for some time duration(keep idle connection alive for some time that users can config)
