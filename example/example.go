@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/broadroad/gpool"
+	"github.com/Broadroad/gpool"
 )
 
 func main() {
