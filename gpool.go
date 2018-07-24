@@ -123,7 +123,7 @@ func (p *gPool) Return(conn net.Conn) error {
 }
 
 // Get implement Pool get interface
-// if don't have any connection avaliable, it will try to new one
+// if don't have any connection available, it will try to new one
 func (p *gPool) Get() (net.Conn, error) {
 	conns, factory := p.getConnsAndFactory()
 	if conns == nil {
