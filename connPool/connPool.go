@@ -22,7 +22,7 @@ type PoolConfig struct {
 
 //gPool store connections and pool info
 type gPool struct {
-	conns      chan net.Conn
+	conns      chan gPool.GConn
 	factory    Factory
 	mu         sync.RWMutex
 	poolConfig *PoolConfig
@@ -72,7 +72,7 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
 		}
 		p.createNum = pc.InitCap
-		p.conns <- conn
+		p.conns <- &GConn{conn: conn, t: time.Now()}
 	}
 	return p, nil
 }
@@ -168,7 +168,7 @@ func (p *gPool) BlockingGet(ctx context.Context) (net.Conn, error) {
 		return nil, ErrNil
 	}
 	//if context is nil it means we have no timeout, we can wait indefinitely
-	if ctx == nil {
+	if ctx == nil { 
 		ctx = context.Background()
 	}
 	// wrap our connections with out custom net.Conn implementation (wrapConn
@@ -198,6 +198,7 @@ func (p *gPool) BlockingGet(ctx context.Context) (net.Conn, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+
 }
 
 // Close implement Pool close interface
