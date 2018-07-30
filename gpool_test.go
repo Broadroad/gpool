@@ -195,26 +195,6 @@ func TestBlockingGetWithNil(t *testing.T) {
 	}
 }
 
-func simpleTCPServer() {
-	l, err := net.Listen(network, address)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer l.Close()
-
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		go func(conn net.Conn) {
-			buffer := make([]byte, 256)
-			conn.Read(buffer)
-		}(conn)
-	}
-}
-
 func tcpServer() {
 	l, err := net.Listen(network, address)
 	if err != nil {
