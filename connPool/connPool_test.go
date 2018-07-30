@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	network    = "tcp"
-	address    = "127.0.0.1:8080"
-	factory    = func() (net.Conn, error) { return net.Dial(network, address) }
+	network = "tcp"
+	address = "127.0.0.1:8080"
+	//	factory    = func() (net.Conn, error) { return net.Dial(network, address) }
 	poolConfig = &PoolConfig{
 		InitCap:     5,
 		MaxCap:      30,

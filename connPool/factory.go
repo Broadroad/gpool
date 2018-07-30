@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// factory is manage borrow or return connection from pool
-type factory struct {
-	factoryconfig FactoryConfig
+// Factory is manage borrow or return connection from pool
+type Factory struct {
+	factoryconfig *FactoryConfig
 }
 
 // FactoryConfig manage factory config
@@ -19,31 +19,36 @@ type FactoryConfig struct {
 	poolConnections bool   // use connection pool or not
 	protocol        string // here is tcp
 	lazyCreate      bool   // create when pool create or when using it
+	key             string // 127.0.0.1:8080
 }
 
 // NewFactory return a new factory
-func NewFactory(fc FactoryConfig) *factory {
-	factory := &factory{factoryconfig: fc}
+func NewFactory(fc *FactoryConfig) *Factory {
+	factory := &Factory{factoryconfig: fc}
 	return factory
 }
 
 // Create a new conn instance
-func (f *factory) Create(key string) (net.Conn, error) {
-	if f.factoryconfig.lazyCreate {
-		return NewGConn(key), nil
+func (f *Factory) Create() (net.Conn, error) {
+	return create(f.factoryconfig.key, f.factoryconfig.lazyCreate, f.factoryconfig.protocol)
+}
+
+func create(key string, lazyCreate bool, protocol string) (net.Conn, error) {
+	if lazyCreate {
+		return NewGConn(), nil
 	}
 
-	return net.Dial(f.factoryconfig.protocol, key)
+	return net.Dial(protocol, key)
 }
 
 // DestoryObject destory the conn instance
-func (f *factory) DestoryObject(key string, g GConn) error {
+func (f *Factory) DestoryObject(key string, g *GConn) error {
 	g.Conn.Close()
 	return nil
 }
 
 // ValidateObject validate whehter the connection is connected
-func (f *factory) ValidateObject(key string, g GConn) bool {
+func (f *Factory) ValidateObject(key string, g *GConn) bool {
 	if g.Conn != nil {
 		return true
 	}
@@ -51,7 +56,7 @@ func (f *factory) ValidateObject(key string, g GConn) bool {
 }
 
 // ActiveObject really connect when called
-func (f *factory) ActiveObject(key string, g GConn) error {
+func (f *Factory) ActiveObject(key string, g *GConn) error {
 	if g.Conn == nil {
 		return g.Connect()
 	}

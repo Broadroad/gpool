@@ -7,6 +7,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	. "github.com/gpool"
 )
 
 // PoolConfig used for config the connection pool
@@ -17,13 +19,15 @@ type PoolConfig struct {
 	MaxCap int
 	// WaitTimeout is the timeout for waiting to borrow a connection
 	WaitTimeout time.Duration
-	Factory     func() (net.Conn, error)
+	// 127.0.0.1:8080
+	key string
 }
 
 //gPool store connections and pool info
+//gPool key -> conns, each ip:port mapping a connection pool
 type gPool struct {
-	conns      chan gPool.GConn
-	factory    Factory
+	conns      chan *GConn
+	factory    *Factory
 	mu         sync.RWMutex
 	poolConfig *PoolConfig
 	idleConns  int
@@ -31,9 +35,6 @@ type gPool struct {
 	//will be used for blocking calls
 	remainingSpace chan bool
 }
-
-// Factory generate a new connection
-type Factory func() (net.Conn, error)
 
 func (p *gPool) addRemainingSpace() {
 	p.remainingSpace <- true
@@ -44,16 +45,16 @@ func (p *gPool) removeRemainingSpace() {
 }
 
 // NewGPool create a connection pool
-func NewGPool(pc *PoolConfig) (Pool, error) {
+func NewGPool(pc *PoolConfig, fc *FactoryConfig) (Pool, error) {
 	// test initCap and maxCap
 	if pc.InitCap < 0 || pc.MaxCap < 0 || pc.InitCap > pc.MaxCap {
 		return nil, errors.New("invalid capacity setting")
 	}
 	p := &gPool{
-		conns:          make(chan net.Conn, pc.MaxCap),
-		factory:        pc.Factory,
+		conns:          make(chan *GConn, pc.MaxCap),
 		poolConfig:     pc,
 		idleConns:      pc.InitCap,
+		factory:        NewFactory(fc),
 		remainingSpace: make(chan bool, pc.MaxCap),
 	}
 
@@ -64,7 +65,7 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 
 	// create initial connection, if wrong just close it
 	for i := 0; i < pc.InitCap; i++ {
-		conn, err := pc.Factory()
+		conn, err := p.factory.Create()
 		p.removeRemainingSpace()
 		if err != nil {
 			p.Close()
@@ -72,25 +73,47 @@ func NewGPool(pc *PoolConfig) (Pool, error) {
 			return nil, fmt.Errorf("factory is not able to fill the pool: %s", err)
 		}
 		p.createNum = pc.InitCap
-		p.conns <- &GConn{conn: conn, t: time.Now()}
+		p.conns <- &GConn{Conn: conn}
 	}
 	return p, nil
 }
 
-// wrapConn wraps a standard net.Conn to a poolConn net.Conn.
-func (p *gPool) wrapConn(conn net.Conn) net.Conn {
-	gconn := &GConn{p: p}
-	gconn.Conn = conn
-	return gconn
-}
+func (p *gPool) Borrow() (*GConn, error) {
+	p.mu.Lock()
+	if p.conns == nil {
+		return nil, ErrNil
+	}
+	p.mu.Unlock()
 
-// getConnsAndFactory get conn channel and factory by once
-func (p *gPool) getConnsAndFactory() (chan net.Conn, Factory) {
-	p.mu.RLock()
-	conns := p.conns
-	factory := p.factory
-	p.mu.RUnlock()
-	return conns, factory
+	select {
+	case conn := <-p.conns:
+		if conn == nil {
+			return nil, ErrClosed
+		}
+
+		p.mu.Lock()
+		p.idleConns--
+		p.mu.Unlock()
+
+		p.factory.ActiveObject(p.factory.factoryconfig.key, conn)
+		return conn, nil
+	default:
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		p.createNum++
+		if p.createNum > p.poolConfig.MaxCap {
+			return nil, errors.New("More than MaxCap")
+		}
+		conn, err := p.factory.Create()
+		p.removeRemainingSpace()
+
+		if err != nil {
+			p.addRemainingSpace()
+			return nil, err
+		}
+
+		return &GConn{Conn: conn}, nil
+	}
 }
 
 // Return return the connection back to the pool. If the pool is full or closed,
@@ -111,7 +134,7 @@ func (p *gPool) Return(conn net.Conn) error {
 	// put the resource back into the pool. If the pool is full, this will
 	// block and the default case will be executed.
 	select {
-	case p.conns <- conn:
+	case p.conns <- &GConn{Conn: conn}:
 		p.idleConns++
 		return nil
 	default:
@@ -123,23 +146,24 @@ func (p *gPool) Return(conn net.Conn) error {
 // Get implement Pool get interface
 // if don't have any connection available, it will try to new one
 func (p *gPool) Get() (net.Conn, error) {
-	conns, factory := p.getConnsAndFactory()
-	if conns == nil {
+	p.mu.Lock()
+	if p.conns == nil {
 		return nil, ErrNil
 	}
+	p.mu.Unlock()
 
 	// wrap our connections with out custom net.Conn implementation (wrapConn
 	// method) that puts the connection back to the pool if it's closed.
 	select {
-	case conn := <-conns:
-		if conn == nil {
+	case conn := <-p.conns:
+		if &conn == nil {
 			return nil, ErrClosed
 		}
 
 		p.mu.Lock()
 		p.idleConns--
 		p.mu.Unlock()
-		return p.wrapConn(conn), nil
+		return conn.Conn, nil
 	default:
 		p.mu.Lock()
 		defer p.mu.Unlock()
@@ -147,7 +171,7 @@ func (p *gPool) Get() (net.Conn, error) {
 		if p.createNum > p.poolConfig.MaxCap {
 			return nil, errors.New("More than MaxCap")
 		}
-		conn, err := factory()
+		conn, err := p.factory.Create()
 		p.removeRemainingSpace()
 
 		if err != nil {
@@ -155,7 +179,7 @@ func (p *gPool) Get() (net.Conn, error) {
 			return nil, err
 		}
 
-		return p.wrapConn(conn), nil
+		return conn, nil
 	}
 }
 
@@ -163,12 +187,15 @@ func (p *gPool) Get() (net.Conn, error) {
 // to wait for specific amount of time. If nil is passed, this will wait indefinitely until a connection is
 // available.
 func (p *gPool) BlockingGet(ctx context.Context) (net.Conn, error) {
-	conns, factory := p.getConnsAndFactory()
+	p.mu.RLock()
+	conns := p.conns
+	p.mu.Unlock()
+
 	if conns == nil {
 		return nil, ErrNil
 	}
 	//if context is nil it means we have no timeout, we can wait indefinitely
-	if ctx == nil { 
+	if ctx == nil {
 		ctx = context.Background()
 	}
 	// wrap our connections with out custom net.Conn implementation (wrapConn
@@ -182,18 +209,18 @@ func (p *gPool) BlockingGet(ctx context.Context) (net.Conn, error) {
 		p.mu.Lock()
 		p.idleConns--
 		p.mu.Unlock()
-		return p.wrapConn(conn), nil
+		return conn, nil
 	case _ = <-p.remainingSpace:
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		p.createNum++
-		conn, err := factory()
+		conn, err := p.factory.Create()
 		if err != nil {
 			p.addRemainingSpace()
 			return nil, err
 		}
 
-		return p.wrapConn(conn), nil
+		return conn, nil
 	//if context deadline is reached, return timeout error
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -207,7 +234,6 @@ func (p *gPool) Close() {
 	p.mu.Lock()
 	conns := p.conns
 	p.conns = nil
-	p.factory = nil
 	p.mu.Unlock()
 
 	if conns == nil {
@@ -224,14 +250,16 @@ func (p *gPool) Close() {
 // Len implement Pool Len interface
 // it will return current length of the pool
 func (p *gPool) Len() int {
-	conns, _ := p.getConnsAndFactory()
-	return len(conns)
+	p.mu.RLock()
+	length := len(p.conns)
+	p.mu.Unlock()
+	return length
 }
 
 // Idle implement Pool Idle interface
 // it will return current idle length of the pool
 func (p *gPool) Idle() int {
-	p.mu.Lock()
+	p.mu.RLock()
 	idle := p.idleConns
 	p.mu.Unlock()
 	return int(idle)

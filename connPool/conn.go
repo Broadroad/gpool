@@ -5,6 +5,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // GConn wrap net.Conn to borrow or return conn
@@ -28,8 +30,9 @@ type GConn struct {
 }
 
 // NewGConn return a new GConn
-func NewGConn(key string) *GConn {
-	return &GConn{key: key}
+func NewGConn() *GConn {
+	uuid := uuid.New()
+	return &GConn{uuid: uuid.String()}
 }
 
 // Close puts the given connects back to the pool instead of closing it.
