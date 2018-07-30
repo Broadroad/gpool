@@ -1,4 +1,4 @@
-package gpool
+package connpool
 
 import (
 	"context"
@@ -17,8 +17,6 @@ type PoolConfig struct {
 	MaxCap int
 	// WaitTimeout is the timeout for waiting to borrow a connection
 	WaitTimeout time.Duration
-	// IdleTimeout is the timeout for a connection to be alive
-	IdleTimeout time.Duration
 	Factory     func() (net.Conn, error)
 }
 

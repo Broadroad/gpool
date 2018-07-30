@@ -1,4 +1,4 @@
-// Package gpool implements a tcp connection pool to manage connection and use
+// Package gpool implements a pool to manage tcp, buffer, goroutine pool
 package gpool
 
 import (
