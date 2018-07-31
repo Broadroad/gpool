@@ -18,7 +18,7 @@ var (
 	factoryConfig = &FactoryConfig{
 		connectTimeout:    10,
 		connectMaxRetries: 10,
-		lazyCreate:        false,
+		lazyCreate:        true,
 		protocol:          "tcp",
 		key:               "127.0.0.1:8080",
 	}
@@ -29,19 +29,20 @@ func init() {
 	time.Sleep(time.Millisecond * 300) // wait until tcp server has been settled
 }
 
-func TestGet(t *testing.T) {
+func TestBorrow(t *testing.T) {
 	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 
 	gconn, err := p.Borrow(address)
-	p.Return(gconn)
 	gconn.Close()
+	p.Return(gconn)
+
 	if err != nil {
 		t.Errorf("Get error: %s", err)
 	}
 }
 
-/*func TestPressGet(t *testing.T) {
+func TestPressBorrowSmallThanMaxCap(t *testing.T) {
 	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 	done := make(chan struct{})
@@ -57,7 +58,7 @@ func TestGet(t *testing.T) {
 			}
 
 			time.Sleep(time.Second * 1)
-			conn.Close()
+			p.Return(conn)
 		}()
 	}
 
@@ -66,6 +67,34 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestPressBorrowBigThanMaxCap(t *testing.T) {
+	p, _ := NewGPool(poolConfig, factoryConfig)
+	defer p.Close()
+	done := make(chan struct{})
+
+	for i := 0; i < 40; i++ {
+		go func() {
+			defer func() {
+				done <- struct{}{}
+			}()
+			conn, err := p.Borrow(address)
+			if err != nil {
+				t.Errorf("Get error: %s", err)
+			}
+
+			time.Sleep(time.Millisecond * 1)
+			p.Return(conn)
+		}()
+		time.Sleep(time.Millisecond * 1)
+	}
+
+	for i := 0; i < 40; i++ {
+		<-done
+	}
+	time.Sleep(time.Second * 10)
+}
+
+/*
 func TestBlockingGetWithTimeout(t *testing.T) {
 	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()

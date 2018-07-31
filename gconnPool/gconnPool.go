@@ -80,6 +80,17 @@ func (p *GPool) Borrow(key string) (*GConn, error) {
 	p.mu.RUnlock()
 	select {
 	case conn := <-conns:
+		ActiveObject(conn)
+		return conn, nil
+	case _ = <-p.remainingSpace:
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		conn, err := p.factory.Create()
+		if err != nil {
+			p.addRemainingSpace()
+			return nil, err
+		}
+
 		return conn, nil
 	default:
 		return nil, NilERROR

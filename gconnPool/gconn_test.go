@@ -29,7 +29,6 @@ func TestClose(t *testing.T) {
 }
 
 // TestConnect test Connect
-
 func TestConnect(t *testing.T) {
 	gconn := NewGConn(key, connectMaxRetries, connectMinRetry, protocol)
 	err := gconn.Connect()
