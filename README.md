@@ -1,7 +1,7 @@
 # gpool[![GoDoc](https://godoc.org/github.com/Broadroad/gpool?status.svg)](https://godoc.org/github.com/Broadroad/gpool) [![Build Status](https://travis-ci.org/Broadroad/gpool.svg?branch=master)](https://travis-ci.org/Broadroad/gpool)
 
-A go tcp connection pool
-
+A golang pool which will support connection pool, buffer pool, goroutine pool. Help developers to use pool easily. Now gpool only support tcp connection pool. It will support other pools soon. And Thanks to https://github.com/fatih/pool, ideas comes from fatih. 
+ 
 ## Function
 - gpool support tcp connection now
 - reuse tcp connection in gpool
