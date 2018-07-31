@@ -5,6 +5,17 @@ import (
 	"fmt"
 )
 
+// ConnPoolError wrap Conn pool status and code
+type ConnPoolError struct {
+	Status     string
+	StatusCode int
+}
+
+// Error implements error interface
+func (e ConnPoolError) Error() string {
+	return fmt.Sprintf("Status: %s, Code: %d", e.Status, e.StatusCode)
+}
+
 // New returns an error that formats as the given text.
 func New(text string) error {
 	return errors.New(text)

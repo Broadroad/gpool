@@ -1,11 +1,10 @@
 package connpool
 
 import (
-	"net"
 	"testing"
 )
 
 // TestConn_Impl test connpool
 func TestConn_Impl(t *testing.T) {
-	var _ net.Conn = new(GConn)
+	//var _ net.Conn = new(GConn)
 }

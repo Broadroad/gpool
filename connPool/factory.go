@@ -3,6 +3,8 @@ package connpool
 import (
 	"net"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Factory is manage borrow or return connection from pool
@@ -29,16 +31,21 @@ func NewFactory(fc *FactoryConfig) *Factory {
 }
 
 // Create a new conn instance
-func (f *Factory) Create() (net.Conn, error) {
+func (f *Factory) Create() (*GConn, error) {
 	return create(f.factoryconfig.key, f.factoryconfig.lazyCreate, f.factoryconfig.protocol)
 }
 
-func create(key string, lazyCreate bool, protocol string) (net.Conn, error) {
+func create(key string, lazyCreate bool, protocol string) (*GConn, error) {
 	if lazyCreate {
 		return NewGConn(), nil
 	}
 
-	return net.Dial(protocol, key)
+	conn, err := net.Dial(protocol, key)
+	if err != nil {
+		return nil, err
+	}
+	uuid := uuid.New()
+	return &GConn{Conn: conn, uuid: uuid.String()}, nil
 }
 
 // DestoryObject destory the conn instance
@@ -56,7 +63,7 @@ func (f *Factory) ValidateObject(key string, g *GConn) bool {
 }
 
 // ActiveObject really connect when called
-func (f *Factory) ActiveObject(key string, g *GConn) error {
+func (f *Factory) ActiveObject(g *GConn) error {
 	if g.Conn == nil {
 		return g.Connect()
 	}

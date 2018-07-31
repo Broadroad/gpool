@@ -1,7 +1,6 @@
 package connpool
 
 import (
-	"context"
 	"log"
 	"net"
 	"testing"
@@ -13,10 +12,15 @@ var (
 	address = "127.0.0.1:8080"
 	//	factory    = func() (net.Conn, error) { return net.Dial(network, address) }
 	poolConfig = &PoolConfig{
-		InitCap:     5,
-		MaxCap:      30,
-		Factory:     factory,
-		IdleTimeout: 15 * time.Second,
+		InitCap: 5,
+		MaxCap:  30,
+	}
+	factoryConfig = &FactoryConfig{
+		connectTimeout: 10,
+		connectRetries: 10,
+		lazyCreate:     false,
+		protocol:       "tcp",
+		key:            "127.0.0.1:8080",
 	}
 )
 
@@ -25,30 +29,19 @@ func init() {
 	time.Sleep(time.Millisecond * 300) // wait until tcp server has been settled
 }
 
-func TestNew(t *testing.T) {
-	_, err := NewGPool(poolConfig)
-	if err != nil {
-		t.Errorf("New error: %s", err)
-	}
-}
-
 func TestGet(t *testing.T) {
-	p, _ := NewGPool(poolConfig)
+	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 
-	conn, err := p.Get()
+	gconn, err := p.Borrow(address)
+	p.Return(gconn)
 	if err != nil {
 		t.Errorf("Get error: %s", err)
 	}
-
-	_, ok := conn.(*GConn)
-	if !ok {
-		t.Errorf("Conn is not of type GConn")
-	}
 }
 
-func TestPressGet(t *testing.T) {
-	p, _ := NewGPool(poolConfig)
+/*func TestPressGet(t *testing.T) {
+	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 	done := make(chan struct{})
 
@@ -57,18 +50,13 @@ func TestPressGet(t *testing.T) {
 			defer func() {
 				done <- struct{}{}
 			}()
-			conn, err := p.Get()
+			conn, err := p.Borrow(address)
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
 
-			_, ok := conn.(*GConn)
-			if !ok {
-				t.Errorf("Conn is not of type GConn")
-			} else {
-				time.Sleep(time.Second * 1)
-				conn.Close()
-			}
+			time.Sleep(time.Second * 1)
+			conn.Close()
 		}()
 	}
 
@@ -78,7 +66,7 @@ func TestPressGet(t *testing.T) {
 }
 
 func TestBlockingGetWithTimeout(t *testing.T) {
-	p, _ := NewGPool(poolConfig)
+	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 	done := make(chan struct{})
 
@@ -92,7 +80,7 @@ func TestBlockingGetWithTimeout(t *testing.T) {
 				done <- struct{}{}
 			}()
 
-			conn, err := p.BlockingGet(ctx)
+			conn, err := p.BlockingBorrow(ctx)
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
@@ -119,7 +107,7 @@ func TestBlockingGetWithTimeout(t *testing.T) {
 }
 
 func TestBlockingGetWithoutTimeout(t *testing.T) {
-	p, _ := NewGPool(poolConfig)
+	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 	done := make(chan struct{})
 
@@ -132,7 +120,7 @@ func TestBlockingGetWithoutTimeout(t *testing.T) {
 				done <- struct{}{}
 			}()
 
-			conn, err := p.BlockingGet(ctx)
+			conn, err := p.BlockingBorrow(ctx)
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
@@ -159,7 +147,7 @@ func TestBlockingGetWithoutTimeout(t *testing.T) {
 }
 
 func TestBlockingGetWithNil(t *testing.T) {
-	p, _ := NewGPool(poolConfig)
+	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 	done := make(chan struct{})
 
@@ -169,7 +157,7 @@ func TestBlockingGetWithNil(t *testing.T) {
 				done <- struct{}{}
 			}()
 			//nil as ctx - will block indefinitely
-			conn, err := p.BlockingGet(nil)
+			conn, err := p.BlockingBorrow(nil)
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
@@ -194,6 +182,7 @@ func TestBlockingGetWithNil(t *testing.T) {
 		<-done
 	}
 }
+*/
 
 func tcpServer() {
 	l, err := net.Listen(network, address)
@@ -213,9 +202,9 @@ func tcpServer() {
 }
 
 func handleRequest(conn net.Conn) {
-	//log.Println("Accepted new connection.")
+	log.Println("Accepted new connection.")
 	defer conn.Close()
-	//defer log.Println("Closed connection.")
+	defer log.Println("Closed connection.")
 
 	for {
 		buf := make([]byte, 1024)

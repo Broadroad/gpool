@@ -14,7 +14,7 @@ type GConn struct {
 	// wrap real connection
 	net.Conn
 	// gpool
-	p *gPool
+	p *GPool
 	//sync pool put or get
 	mu sync.RWMutex
 	// identify an GConn usable or can close
@@ -37,24 +37,18 @@ func NewGConn() *GConn {
 
 // Close puts the given connects back to the pool instead of closing it.
 func (g *GConn) Close() error {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-
-	if g.unusable {
-		if g.Conn != nil {
-			g.p.addRemainingSpace()
-			return g.Conn.Close()
-		}
-		return nil
+	if g.Conn != nil {
+		g.p.addRemainingSpace()
+		return g.Conn.Close()
 	}
-	return g.p.Return(g.Conn)
+	return nil
 }
 
 // Connect real connect
 func (g *GConn) Connect() error {
 	connectAttempts := 0
 	for connectAttempts < g.connectMaxRetries {
-		conn, err := net.Dial("tcp", g.key)
+		conn, err := net.Dial(g.p.factory.factoryconfig.protocol, g.key)
 		if err != nil {
 			time.Sleep(time.Second * g.connectMinRetry)
 			connectAttempts++
