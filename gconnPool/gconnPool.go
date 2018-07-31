@@ -2,7 +2,6 @@ package connpool
 
 import (
 	"context"
-	"net"
 	"sync"
 )
 
@@ -123,10 +122,10 @@ func (p *GPool) Return(conn *GConn) error {
 // BlockingBorrow will block until it gets an idle connection from pool. Context timeout can be passed with context
 // to wait for specific amount of time. If nil is passed, this will wait indefinitely until a connection is
 // available.
-func (p *GPool) BlockingBorrow(ctx context.Context) (net.Conn, error) {
+func (p *GPool) BlockingBorrow(ctx context.Context) (*GConn, error) {
 	p.mu.RLock()
 	conns := p.conns
-	p.mu.Unlock()
+	p.mu.RUnlock()
 
 	if conns == nil {
 		return nil, NilERROR
@@ -142,12 +141,12 @@ func (p *GPool) BlockingBorrow(ctx context.Context) (net.Conn, error) {
 		if conn == nil {
 			return nil, NilERROR
 		}
+		ActiveObject(conn)
 
 		return conn, nil
 	case _ = <-p.remainingSpace:
-		p.mu.Lock()
-		defer p.mu.Unlock()
 		conn, err := p.factory.Create()
+		ActiveObject(conn)
 		if err != nil {
 			p.addRemainingSpace()
 			return nil, err

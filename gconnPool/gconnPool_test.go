@@ -1,6 +1,7 @@
 package connpool
 
 import (
+	"context"
 	"log"
 	"net"
 	"testing"
@@ -57,7 +58,7 @@ func TestPressBorrowSmallThanMaxCap(t *testing.T) {
 				t.Errorf("Get error: %s", err)
 			}
 
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Microsecond * 1)
 			p.Return(conn)
 		}()
 	}
@@ -94,8 +95,7 @@ func TestPressBorrowBigThanMaxCap(t *testing.T) {
 	time.Sleep(time.Second * 10)
 }
 
-/*
-func TestBlockingGetWithTimeout(t *testing.T) {
+func TestBlockingBorrowWithTimeout(t *testing.T) {
 	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 	done := make(chan struct{})
@@ -115,19 +115,15 @@ func TestBlockingGetWithTimeout(t *testing.T) {
 				t.Errorf("Get error: %s", err)
 			}
 
-			_, ok := conn.(*GConn)
-			if !ok {
-				t.Errorf("Conn is not of type GConn")
-			} else {
-				conn.Write([]byte("Message"))
-				r := make([]byte, 1024)
-				time.Sleep(time.Second * 1)
-				_, err := conn.Read(r)
-				if err != nil {
-					t.Error("error reading from conn", err)
-				}
-				conn.Close()
+			conn.Conn.Write([]byte("Message"))
+			r := make([]byte, 1024)
+			time.Sleep(time.Millisecond * 1)
+			_, err = conn.Conn.Read(r)
+			if err != nil {
+				t.Error("error reading from conn", err)
 			}
+			p.Return(conn)
+
 		}(i)
 	}
 
@@ -155,19 +151,14 @@ func TestBlockingGetWithoutTimeout(t *testing.T) {
 				t.Errorf("Get error: %s", err)
 			}
 
-			_, ok := conn.(*GConn)
-			if !ok {
-				t.Errorf("Conn is not of type GConn")
-			} else {
-				conn.Write([]byte("Message"))
-				r := make([]byte, 1024)
-				time.Sleep(time.Second * 1)
-				_, err := conn.Read(r)
-				if err != nil {
-					t.Error("error reading from conn", err)
-				}
-				conn.Close()
+			conn.Conn.Write([]byte("Message"))
+			r := make([]byte, 1024)
+			time.Sleep(time.Second * 1)
+			_, err = conn.Conn.Read(r)
+			if err != nil {
+				t.Error("error reading from conn", err)
 			}
+			p.Return(conn)
 		}(i)
 	}
 
@@ -192,19 +183,14 @@ func TestBlockingGetWithNil(t *testing.T) {
 				t.Errorf("Get error: %s", err)
 			}
 
-			_, ok := conn.(*GConn)
-			if !ok {
-				t.Errorf("Conn is not of type GConn")
-			} else {
-				conn.Write([]byte("Message"))
-				r := make([]byte, 1024)
-				time.Sleep(time.Second * 1)
-				_, err := conn.Read(r)
-				if err != nil {
-					t.Error("error reading from conn", err)
-				}
-				conn.Close()
+			conn.Conn.Write([]byte("Message"))
+			r := make([]byte, 1024)
+			time.Sleep(time.Millisecond * 1)
+			_, err = conn.Conn.Read(r)
+			if err != nil {
+				t.Error("error reading from conn", err)
 			}
+			p.Return(conn)
 		}(i)
 	}
 
@@ -212,7 +198,6 @@ func TestBlockingGetWithNil(t *testing.T) {
 		<-done
 	}
 }
-*/
 
 func tcpServer() {
 	l, err := net.Listen(network, address)
