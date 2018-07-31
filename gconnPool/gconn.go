@@ -2,8 +2,8 @@ package connpool
 
 import (
 	"errors"
+	"fmt"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,12 +13,6 @@ import (
 type GConn struct {
 	// wrap real connection
 	net.Conn
-	// gpool
-	p *GPool
-	//sync pool put or get
-	mu sync.RWMutex
-	// identify an GConn usable or can close
-	unusable bool
 	// key store the ip:port
 	key string
 	// connectMaxRetries
@@ -27,30 +21,33 @@ type GConn struct {
 	connectMinRetry time.Duration
 	// uuid
 	uuid string
+	// protocol
+	protocol string
 }
 
 // NewGConn return a new GConn
-func NewGConn() *GConn {
-	uuid := uuid.New()
-	return &GConn{uuid: uuid.String()}
+func NewGConn(key string, connectMaxRetries int, connectMinRetry time.Duration, protocol string) *GConn {
+	return &GConn{uuid: uuid.New().String(), connectMaxRetries: 10, protocol: "tcp", key: "127.0.0.1:8080"}
 }
+
+// Wrap net.Conn to GConn
 
 // Close puts the given connects back to the pool instead of closing it.
 func (g *GConn) Close() error {
 	if g.Conn != nil {
-		g.p.addRemainingSpace()
 		return g.Conn.Close()
 	}
 	return nil
 }
 
-// Connect real connect
+// Connect real connect, it will try connectAttempts and wait connectMinRetry time
 func (g *GConn) Connect() error {
 	connectAttempts := 0
 	for connectAttempts < g.connectMaxRetries {
-		conn, err := net.Dial(g.p.factory.factoryconfig.protocol, g.key)
+		conn, err := net.Dial(g.protocol, g.key)
 		if err != nil {
 			time.Sleep(time.Second * g.connectMinRetry)
+			fmt.Println(err)
 			connectAttempts++
 			continue
 		}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"time"
 )
 
 // PoolConfig used for config the connection pool
@@ -14,8 +13,6 @@ type PoolConfig struct {
 	InitCap int
 	// Maxcap is max connection number of the pool
 	MaxCap int
-	// WaitTimeout is the timeout for waiting to borrow a connection
-	WaitTimeout time.Duration
 	// 127.0.0.1:8080
 	key string
 }
@@ -26,8 +23,6 @@ type GPool struct {
 	factory    *Factory
 	mu         sync.RWMutex
 	poolConfig *PoolConfig
-	idleConns  int
-	createNum  int
 	//will be used for blocking calls
 	remainingSpace chan bool
 }
@@ -46,10 +41,10 @@ func NewGPool(pc *PoolConfig, fc *FactoryConfig) (*GPool, error) {
 	if pc.InitCap < 0 || pc.MaxCap < 0 || pc.InitCap > pc.MaxCap {
 		return nil, errors.New("invalid capacity setting")
 	}
+
 	p := &GPool{
 		conns:          make(chan *GConn, pc.MaxCap),
 		poolConfig:     pc,
-		idleConns:      pc.InitCap,
 		factory:        NewFactory(fc),
 		remainingSpace: make(chan bool, pc.MaxCap),
 	}
@@ -62,14 +57,12 @@ func NewGPool(pc *PoolConfig, fc *FactoryConfig) (*GPool, error) {
 	// create initial connection, if wrong just close it
 	for i := 0; i < pc.InitCap; i++ {
 		conn, err := p.factory.Create()
-		conn.p = p
 		p.removeRemainingSpace()
 		if err != nil {
 			p.Close()
 			p.addRemainingSpace()
 			return nil, FillERROR
 		}
-		p.createNum = pc.InitCap
 		p.conns <- conn
 	}
 	return p, nil
@@ -135,14 +128,10 @@ func (p *GPool) BlockingBorrow(ctx context.Context) (net.Conn, error) {
 			return nil, NilERROR
 		}
 
-		p.mu.Lock()
-		p.idleConns--
-		p.mu.Unlock()
 		return conn, nil
 	case _ = <-p.remainingSpace:
 		p.mu.Lock()
 		defer p.mu.Unlock()
-		p.createNum++
 		conn, err := p.factory.Create()
 		if err != nil {
 			p.addRemainingSpace()
