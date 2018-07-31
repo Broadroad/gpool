@@ -2,7 +2,6 @@ package connpool
 
 import (
 	"context"
-	"errors"
 	"net"
 	"sync"
 )
@@ -39,13 +38,18 @@ func (p *GPool) removeRemainingSpace() {
 func NewGPool(pc *PoolConfig, fc *FactoryConfig) (*GPool, error) {
 	// test initCap and maxCap
 	if pc.InitCap < 0 || pc.MaxCap < 0 || pc.InitCap > pc.MaxCap {
-		return nil, errors.New("invalid capacity setting")
+		return nil, ParameterERROR
+	}
+
+	factory, err := NewFactory(fc)
+	if err != nil {
+		return nil, err
 	}
 
 	p := &GPool{
 		conns:          make(chan *GConn, pc.MaxCap),
 		poolConfig:     pc,
-		factory:        NewFactory(fc),
+		factory:        factory,
 		remainingSpace: make(chan bool, pc.MaxCap),
 	}
 
@@ -77,6 +81,8 @@ func (p *GPool) Borrow(key string) (*GConn, error) {
 	select {
 	case conn := <-conns:
 		return conn, nil
+	default:
+		return nil, NilERROR
 	}
 }
 

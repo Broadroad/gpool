@@ -35,6 +35,7 @@ func TestGet(t *testing.T) {
 
 	gconn, err := p.Borrow(address)
 	p.Return(gconn)
+	gconn.Close()
 	if err != nil {
 		t.Errorf("Get error: %s", err)
 	}

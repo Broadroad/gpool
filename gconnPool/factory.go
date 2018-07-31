@@ -20,9 +20,12 @@ type FactoryConfig struct {
 }
 
 // NewFactory return a new factory
-func NewFactory(fc *FactoryConfig) *Factory {
+func NewFactory(fc *FactoryConfig) (*Factory, error) {
+	if fc.connectTimeout < 0 || fc.connectMaxRetries < 0 || fc.connectMinRetry < 0 {
+		return nil, ParameterERROR
+	}
 	factory := &Factory{factoryconfig: fc}
-	return factory
+	return factory, nil
 }
 
 // Create a new gconn instance
