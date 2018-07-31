@@ -3,10 +3,15 @@
 A go tcp connection pool
 
 ## Function
-- gpool support net.Conn interface
-- reuse connection in gpool
+- gpool support tcp connection now
+- reuse tcp connection in gpool
 - get connection from gpool will error when there is no idle connection in gpool
 - support block get from gpool when there is no idle connection in gpool with timeout
+
+## Todo
+- support lazy connect when real borrow conn from gpool
+- support buffer pool
+- support goroutine pool
 
 ## Usage
 ### 1. install with this command:
