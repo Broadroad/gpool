@@ -74,7 +74,7 @@ func NewGPool(pc *PoolConfig, fc *FactoryConfig) (*GPool, error) {
 
 // Borrow borrows a connection from factory, and factory active the conn object
 // it is lazy connect way
-func (p *GPool) Borrow(key string) (*GConn, error) {
+func (p *GPool) Borrow() (*GConn, error) {
 	p.mu.RLock()
 	conns := p.conns
 	p.mu.RUnlock()
@@ -83,8 +83,6 @@ func (p *GPool) Borrow(key string) (*GConn, error) {
 		ActiveObject(conn)
 		return conn, nil
 	case _ = <-p.remainingSpace:
-		p.mu.Lock()
-		defer p.mu.Unlock()
 		conn, err := p.factory.Create()
 		if err != nil {
 			p.addRemainingSpace()

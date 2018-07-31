@@ -33,7 +33,7 @@ func TestBorrow(t *testing.T) {
 	p, _ := NewGPool(poolConfig, factoryConfig)
 	defer p.Close()
 
-	gconn, err := p.Borrow(address)
+	gconn, err := p.Borrow()
 	gconn.Close()
 	p.Return(gconn)
 
@@ -52,7 +52,7 @@ func TestPressBorrowSmallThanMaxCap(t *testing.T) {
 			defer func() {
 				done <- struct{}{}
 			}()
-			conn, err := p.Borrow(address)
+			conn, err := p.Borrow()
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}
@@ -77,7 +77,7 @@ func TestPressBorrowBigThanMaxCap(t *testing.T) {
 			defer func() {
 				done <- struct{}{}
 			}()
-			conn, err := p.Borrow(address)
+			conn, err := p.Borrow()
 			if err != nil {
 				t.Errorf("Get error: %s", err)
 			}

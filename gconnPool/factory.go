@@ -47,13 +47,13 @@ func create(key string, connectMaxRetries int, connectMinRetry time.Duration, la
 }
 
 // DestoryObject destory the conn instance
-func DestoryObject(key string, g *GConn) error {
+func DestoryObject(g *GConn) error {
 	g.Conn.Close()
 	return nil
 }
 
 // ValidateObject validate whehter the connection is connected
-func ValidateObject(key string, g *GConn) bool {
+func ValidateObject(g *GConn) bool {
 	if g.Conn != nil {
 		return true
 	}
