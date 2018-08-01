@@ -178,3 +178,11 @@ func (p *GPool) Close() {
 		conn.Close()
 	}
 }
+
+// Length return the length in pool which connection is active
+func (p *GPool) Length() int {
+	p.mu.RLock()
+	conns := p.conns
+	p.mu.RUnlock()
+	return len(conns)
+}
