@@ -16,7 +16,7 @@ var (
 // TestNewGConn test connpool
 func TestNewGConn(t *testing.T) {
 	gconn := NewGConn(key, connectMaxRetries, connectMinRetry, protocol)
-	fmt.Println(gconn.uuid)
+	fmt.Println(gconn.Uuid)
 }
 
 // TestClose test Close

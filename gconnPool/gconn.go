@@ -20,14 +20,14 @@ type GConn struct {
 	// connectMinRetry is time wait for next connect try
 	connectMinRetry time.Duration
 	// uuid
-	uuid string
+	Uuid string
 	// protocol
 	protocol string
 }
 
 // NewGConn return a new GConn
 func NewGConn(key string, connectMaxRetries int, connectMinRetry time.Duration, protocol string) *GConn {
-	return &GConn{uuid: uuid.New().String(), connectMaxRetries: 10, protocol: "tcp", key: "127.0.0.1:8080"}
+	return &GConn{Uuid: uuid.New().String(), connectMaxRetries: 10, protocol: "tcp", key: "127.0.0.1:8080"}
 }
 
 // Close puts the given connects back to the pool instead of closing it.
